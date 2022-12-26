@@ -279,14 +279,19 @@ type Line struct {
 
 func worker(finish chan bool, w int, jobs chan *Line, wg *sync.WaitGroup) {
 	for {
-		select {
-		case data := <-jobs:
-			fmt.Printf("%v gia tri la: %v\n", data.line_number, data.data)
-			time.Sleep(5 * time.Millisecond)
+		
+	 	data, ok := <-jobs
+		 if !ok {
+			println("done")
 			wg.Done()
-		case <-finish:
-			break
+			return
 		}
+
+		fmt.Println("worker:", w, "print:", data.data)
+		fmt.Printf("%v gia tri la: %v\n", data.line_number, data.data)
+		// time.Sleep(5 * time.Millisecond)
+		// wg.Done()
+		
 	}
 
 }
@@ -294,7 +299,7 @@ func worker(finish chan bool, w int, jobs chan *Line, wg *sync.WaitGroup) {
 func ex4() {
 	jobs := make(chan *Line, 10)
 	finish := make([]chan bool, 4)
-	defer close(jobs)      
+	// defer close(jobs)      
 
 	// li := []*Line{};
 	text, err := os.Open("file.txt")
@@ -304,21 +309,23 @@ func ex4() {
 	defer text.Close()
 	
 	for w := 1; w <= 3; w++ {
+		wg.Add(1)
 		finish[w] = make(chan bool)
 		go worker(finish[w], w, jobs, &wg)
 	}
-	
+
 	num:= 1
 	scanner := bufio.NewScanner(text)
+
 	for scanner.Scan() {
-		wg.Add(1)
 		a := &Line{line_number: num, data: scanner.Text()}
 		num ++
 		jobs <- a
 	}
+	close(jobs)
 	wg.Wait()
 	fmt.Println("Xong")
-	time.Sleep(10 * time.Millisecond)
+	// time.Sleep(10 * time.Millisecond)
 }
 
 func main() {
